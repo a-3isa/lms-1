@@ -1,0 +1,45 @@
+services:
+  postgres:
+    build: ./docker/postgres
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+
+  rabbitmq:
+    build: ./docker/rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    env_file:
+      - .env
+  redis:
+    build: ./docker/redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+  # app:
+  #   build: .
+  #   ports:
+  #     - '3000:3000'
+  #   depends_on:
+  #     - postgres
+  #     # - rabbitmq
+  #     # - redis
+  #   envfile:
+  #     - .env
+
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
