@@ -1,60 +1,208 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Learning Management System (LMS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive Learning Management System built with NestJS, featuring course management, lesson delivery, quiz assessments, and progress tracking.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- **User Management**: Role-based authentication (Student, Teacher, Admin) with JWT tokens
+- **Course Management**: Create, enroll, and manage courses with role-based access control
+- **Lesson Delivery**: Organize and deliver course content through structured lessons
+- **Assessment System**: Create and manage quizzes with multiple-choice questions
+- **Progress Tracking**: Monitor student progress through lessons and quiz submissions
+- **Email Notifications**: Automated email verification and notifications using Handlebars templates
+- **Caching**: Redis-based caching for improved performance
+- **Message Queue**: RabbitMQ integration for asynchronous processing
+- **Security**: Helmet for security headers, rate limiting, and CORS configuration
+- **Database**: PostgreSQL with TypeORM for data persistence
+- **Docker Support**: Containerized deployment with Docker Compose
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech Stack
 
-## Project setup
+- **Framework**: NestJS with TypeScript
+- **Database**: PostgreSQL with TypeORM
+- **Cache**: Redis
+- **Message Queue**: RabbitMQ
+- **Authentication**: JWT with Passport
+- **Validation**: class-validator and class-transformer
+- **Email**: Nodemailer with Handlebars templates
+- **Testing**: Jest
+- **Linting**: ESLint with Prettier
 
-```bash
-$ npm install
+## Environment Setup
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Database
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=your_db_user
+POSTGRES_PASSWORD=your_db_password
+POSTGRES_DB=lms_db
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT
+JWT_SECRET=your_jwt_secret
+
+# Email
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=your_email@gmail.com
+MAIL_PASS=your_app_password
+
+# RabbitMQ
+RABBITMQ_URL=amqp://localhost:5672
+
+# Application
+PORT=3000
+NODE_ENV=development
 ```
 
-## Compile and run the project
+## Docker Setup
+
+The application includes Docker support for easy deployment:
 
 ```bash
-# development
-$ npm run start
+# Start all services (PostgreSQL, Redis, RabbitMQ)
+$ docker-compose up -d
 
-# watch mode
+# View logs
+$ docker-compose logs -f
+
+# Stop services
+$ docker-compose down
+```
+
+## Installation & Running
+
+```bash
+# Install dependencies
+$ npm install
+
+# Run in development mode (with hot reload)
 $ npm run start:dev
 
-# production mode
+# Run in production mode
 $ npm run start:prod
+
+# Build the application
+$ npm run build
 ```
 
-## Run tests
+## Testing
 
 ```bash
-# unit tests
+# Run unit tests
 $ npm run test
 
-# e2e tests
+# Run e2e tests
 $ npm run test:e2e
 
-# test coverage
+# Run tests with coverage
 $ npm run test:cov
+
+# Run tests in watch mode
+$ npm run test:watch
+```
+
+## API Endpoints
+
+The LMS API provides the following main endpoints:
+
+### Authentication
+
+- `POST /auth/register` - User registration
+- `POST /auth/login` - User login
+- `POST /auth/verify-email` - Email verification
+- `POST /auth/forgot-password` - Password reset request
+
+### Courses
+
+- `GET /courses` - Get all courses (paginated)
+- `POST /courses` - Create course (Teachers/Admins only)
+- `GET /courses/:id` - Get course details
+- `PATCH /courses/:id` - Update course
+- `DELETE /courses/:id` - Delete course
+- `POST /courses/:id/enroll` - Enroll in course
+- `POST /courses/:id/unenroll` - Unenroll from course
+
+### Lessons
+
+- `GET /courses/:courseId/lessons` - Get course lessons
+- `POST /courses/:courseId/lessons` - Create lesson (Course owner only)
+- `GET /courses/:courseId/lessons/:id` - Get lesson details
+- `PATCH /courses/:courseId/lessons/:id` - Update lesson
+- `DELETE /courses/:courseId/lessons/:id` - Delete lesson
+
+### Quizzes
+
+- `GET /courses/:courseId/quizzes` - Get course quizzes
+- `POST /courses/:courseId/quizzes` - Create quiz (Course owner only)
+- `GET /courses/:courseId/quizzes/:id` - Get quiz details
+- `PATCH /courses/:courseId/quizzes/:id` - Update quiz
+- `DELETE /courses/:courseId/quizzes/:id` - Delete quiz
+- `POST /courses/:courseId/quizzes/:id/submit` - Submit quiz answers
+
+### Progress
+
+- `POST /progress/lessons/:lessonId/complete` - Mark lesson complete
+- `DELETE /progress/lessons/:lessonId/complete` - Mark lesson incomplete
+- `GET /progress/courses/:courseId` - Get course progress
+
+### User Management
+
+- `GET /user/profile` - Get user profile
+- `PATCH /user/profile` - Update user profile
+
+## Project Structure
+
+```
+src/
+├── app.module.ts                 # Main application module
+├── main.ts                       # Application entry point
+├── auth/                         # Authentication module
+│   ├── auth.controller.ts
+│   ├── auth.module.ts
+│   ├── auth.service.ts
+│   ├── dto/
+│   ├── entities/
+│   ├── guards/
+│   └── strategies/
+├── courses/                      # Course management module
+│   ├── courses.controller.ts
+│   ├── courses.module.ts
+│   ├── courses.service.ts
+│   ├── dto/
+│   └── entities/
+├── lessons/                      # Lesson management module
+│   ├── lessons.controller.ts
+│   ├── lessons.module.ts
+│   ├── lessons.service.ts
+│   ├── dto/
+│   └── entities/
+├── quizzes/                      # Quiz management module
+│   ├── quizzes.controller.ts
+│   ├── quizzes.module.ts
+│   ├── quizzes.service.ts
+│   ├── dto/
+│   └── entities/
+├── progress/                     # Progress tracking module
+│   ├── progress.controller.ts
+│   ├── progress.module.ts
+│   ├── progress.service.ts
+│   ├── dto/
+│   └── entities/
+├── user/                         # User management module
+│   ├── user.controller.ts
+│   ├── user.module.ts
+│   ├── user.service.ts
+│   ├── dto/
+│   └── entities/
+├── rabbitmq/                     # Message queue module
+└── config/                       # Configuration files
 ```
 
 ## Deployment
