@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsInt,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -16,6 +17,11 @@ class CreateOptionDto {
   @IsString()
   @IsNotEmpty()
   text: string;
+
+  @ApiProperty({ description: 'Is this option correct?', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isCorrect?: boolean;
 }
 
 class CreateQuestionDto {
@@ -35,12 +41,6 @@ class CreateQuestionDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOptionDto)
   options: CreateOptionDto[];
-
-  @ApiProperty({
-    description: 'Index of correct option in the options array (0-based)',
-  })
-  @IsInt()
-  correctIndex: number;
 }
 
 export class CreateQuizDto {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import {
   Injectable,
   NotFoundException,
@@ -42,7 +41,7 @@ export class QuizzesService {
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
     private readonly progressService?: ProgressService,
-  ) {}
+  ) { }
 
   public async create(
     courseId: string,
@@ -61,37 +60,22 @@ export class QuizzesService {
       );
     }
 
-    const quiz = this.quizRepo.create({ title: dto.title, course });
-
-    quiz.questions = dto.questions.map((qDto) => {
-      const q = new Question();
-      q.text = qDto.text;
-      q.points = qDto.points ?? 1;
-      q.options = qDto.options.map((opt) => {
-        const o = new Option();
-        o.text = opt.text;
-        return o;
-      });
-      return q;
+    const quiz = this.quizRepo.create({
+      title: dto.title,
+      course,
+      questions: dto.questions.map((q) => ({
+        text: q.text,
+        points: q.points ?? 1,
+        options: q.options.map((o) => ({
+          text: o.text,
+          isCorrect: !!o.isCorrect,
+        })),
+      })),
     });
 
-    const saved = await this.quizRepo.save(quiz);
+    const savedQuiz = await this.quizRepo.save(quiz);
 
-    for (let i = 0; i < (dto.questions?.length ?? 0); i++) {
-      const qDto = dto.questions[i] as
-        | CreateQuizDto['questions'][number]
-        | undefined;
-      const savedQ = saved.questions?.[i];
-      if (!qDto || !savedQ) continue;
-      const correctIdx = qDto.correctIndex ?? 0;
-      const correctOption = savedQ.options?.[correctIdx];
-      if (correctOption) {
-        savedQ.correctOptionId = correctOption.id;
-        await this.questionRepo.save(savedQ);
-      }
-    }
-
-    return this.findOne(courseId, String(saved.id), user);
+    return this.findOne(courseId, String(savedQuiz.id), user);
   }
 
   public async findAll(
@@ -127,31 +111,29 @@ export class QuizzesService {
   }
 
   private sanitizeQuizForUser(quiz: Quiz, user?: User): Quiz | SanitizedQuiz {
-    const isOwnerOrAdmin = !!(
-      user &&
-      (user.role === UserRole.ADMIN ||
-        (quiz.course?.teacher && quiz.course.teacher.id === user.id))
-    );
+    const isOwnerOrAdmin =
+      user?.role === UserRole.ADMIN ||
+      quiz.course?.teacher?.id === user?.id;
+
     if (isOwnerOrAdmin) return quiz;
 
-    const sanitizedQuestions: SanitizedQuestion[] = (quiz.questions ?? []).map(
-      (q) => ({
-        id: q.id,
-        text: q.text,
-        points: q.points ?? 1,
-        options: (q.options ?? []).map((o) => ({ id: o.id, text: o.text })),
-      }),
-    );
-
-    const clone: SanitizedQuiz = {
+    return {
       id: quiz.id,
       title: quiz.title,
       createdAt: quiz.createdAt,
       updatedAt: quiz.updatedAt,
-      questions: sanitizedQuestions,
+      questions: quiz.questions?.map((q) => ({
+        id: q.id,
+        text: q.text,
+        points: q.points ?? 1,
+        options: q.options?.map((o) => ({
+          id: o.id,
+          text: o.text,
+        })),
+      })),
     };
-    return clone;
   }
+
 
   public async update(
     courseId: string,
@@ -161,64 +143,42 @@ export class QuizzesService {
   ): Promise<Quiz | SanitizedQuiz> {
     const quiz = await this.quizRepo.findOne({
       where: { id },
-      relations: ['course', 'course.teacher', 'questions', 'questions.options'],
+      relations: ['course', 'course.teacher'],
     });
+
     if (!quiz || quiz.course.id !== courseId)
       throw new NotFoundException('Quiz not found in course');
 
     if (
-      !(
-        user.role === UserRole.ADMIN ||
-        (quiz.course?.teacher && quiz.course.teacher.id === user.id)
-      )
-    ) {
-      throw new ForbiddenException(
-        'Only course owner or admin can update quizzes',
+      user.role !== UserRole.ADMIN &&
+      quiz.course.teacher?.id !== user.id
+    )
+      throw new ForbiddenException('Not allowed');
+
+    Object.assign(quiz, { title: dto.title ?? quiz.title });
+
+    if (dto.questions) {
+      await this.questionRepo.delete({ quiz: { id: quiz.id } });
+
+      quiz.questions = dto.questions.map((q) =>
+        this.questionRepo.create({
+          text: q.text,
+          points: q.points ?? 1,
+          options: (q.options ?? []).map((o) =>
+            this.optionRepo.create({
+              text: o.text,
+              isCorrect: !!o.isCorrect,
+            }),
+          ),
+        }),
       );
     }
 
-    if (dto.title) quiz.title = dto.title;
+    await this.quizRepo.save(quiz);
 
-    if (dto.questions) {
-      await this.questionRepo
-        .createQueryBuilder()
-        .delete()
-        .where('quizId = :id', { id: quiz.id })
-        .execute();
-
-      quiz.questions = dto.questions.map((qDto) => {
-        const q = new Question();
-        q.text = (qDto as any)?.text ?? '';
-        q.points = (qDto as any)?.points ?? 1;
-        q.options = ((qDto as any)?.options ?? []).map((opt: any) => {
-          const o = new Option();
-          o.text = opt?.text ?? '';
-          return o;
-        });
-        return q;
-      });
-    }
-
-    const saved = await this.quizRepo.save(quiz);
-
-    if (dto.questions) {
-      for (let i = 0; i < (dto.questions?.length ?? 0); i++) {
-        const qDto = dto.questions[
-          i
-        ] as UpdateQuizDto['questions'] extends Array<infer U> ? U : unknown;
-        const savedQ = saved.questions?.[i];
-        if (!qDto || !savedQ) continue;
-        const correctIdx = (qDto as any).correctIndex ?? 0;
-        const correctOption = savedQ.options?.[correctIdx];
-        if (correctOption) {
-          savedQ.correctOptionId = correctOption.id;
-          await this.questionRepo.save(savedQ);
-        }
-      }
-    }
-
-    return this.findOne(courseId, String(saved.id), user);
+    return this.findOne(courseId, id, user);
   }
+
 
   public async remove(
     courseId: string,
@@ -252,49 +212,48 @@ export class QuizzesService {
   ): Promise<{ totalPoints: number; scoredPoints: number; percent: number }> {
     const quiz = await this.quizRepo.findOne({
       where: { id },
-      relations: ['questions', 'questions.options', 'course'],
+      relations: ['questions', 'course'],
     });
+
     if (!quiz || quiz.course.id !== courseId)
       throw new NotFoundException('Quiz not found in course');
 
-    let total = 0;
-    let score = 0;
+    let totalPoints = 0;
+    let scoredPoints = 0;
 
-    for (const q of (quiz.questions ?? []) as Question[]) {
+    for (const q of quiz.questions ?? []) {
       const points = q.points ?? 1;
-      total += points;
-      const qId = q.id as string | undefined;
-      const selected = qId ? answers[qId] : undefined;
-      const correctId = q.correctOptionId;
-      if (
-        typeof selected !== 'undefined' &&
-        typeof correctId !== 'undefined' &&
-        String(selected) === String(correctId)
-      ) {
-        score += points;
+      totalPoints += points;
+
+      const selectedOptionId = answers[q.id];
+      if (selectedOptionId) {
+        const correctOption = q.options.find((o) => o.isCorrect);
+        // Verify selection matches correct option ID
+        if (correctOption && correctOption.id === selectedOptionId) {
+          scoredPoints += points;
+        }
       }
     }
 
-    const percent = total > 0 ? Math.round((score / total) * 100) : 0;
+    const percent = totalPoints
+      ? Math.round((scoredPoints / totalPoints) * 100)
+      : 0;
 
-    const result = { totalPoints: total, scoredPoints: score, percent };
-
-    // persist submission if progressService is available
-    try {
-      if (this.progressService) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    if (this.progressService) {
+      try {
         this.progressService.recordQuizSubmission(
           user,
           id,
-          score,
-          total,
+          scoredPoints,
+          totalPoints,
           percent,
+          answers,
         );
-      }
-    } catch {
-      // swallow persistence errors to not break quiz flow
+      } catch { }
     }
 
-    return result;
+    return { totalPoints, scoredPoints, percent };
   }
+
+
 }

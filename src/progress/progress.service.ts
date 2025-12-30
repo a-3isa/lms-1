@@ -18,7 +18,7 @@ export class ProgressService {
     private readonly lessonRepo: Repository<Lesson>,
     @InjectRepository(Quiz)
     private readonly quizRepo: Repository<Quiz>,
-  ) {}
+  ) { }
 
   public async markLessonComplete(user: User, lessonId: string) {
     const lesson = await this.lessonRepo.findOne({
@@ -61,6 +61,7 @@ export class ProgressService {
     scoredPoints: number,
     totalPoints: number,
     percent: number,
+    answers: Record<string, string>,
   ) {
     const quiz = await this.quizRepo.findOne({
       where: { id: quizId },
@@ -74,6 +75,7 @@ export class ProgressService {
       scoredPoints,
       totalPoints,
       percent,
+      answers,
     });
     return this.quizSubmissionRepo.save(rec);
   }

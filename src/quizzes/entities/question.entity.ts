@@ -19,12 +19,14 @@ export class Question {
   @Column({ type: 'int', default: 1 })
   public points: number;
 
-  @OneToMany(() => Option, (o) => o.question, { cascade: true })
-  public options: Option[];
+  @OneToMany(() => Option, (o) => o.question, {
+    cascade: true,
+    eager: true,
+    onDelete: 'CASCADE',
+  })
+  options: Option[];
 
-  // store correct option id for quick scoring
-  @Column({ nullable: true })
-  public correctOptionId?: string;
+
 
   @ManyToOne(() => Quiz, (quiz) => quiz.questions, { onDelete: 'CASCADE' })
   public quiz: Quiz;

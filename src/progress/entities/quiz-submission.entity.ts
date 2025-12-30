@@ -25,6 +25,9 @@ export class QuizSubmission {
   @Column({ type: 'float' })
   public totalPoints: number;
 
+  @Column({ type: 'simple-json', nullable: true })
+  public answers: Record<string, string>;
+
   @Column({ type: 'int' })
   public percent: number;
 

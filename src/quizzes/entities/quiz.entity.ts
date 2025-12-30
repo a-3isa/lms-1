@@ -30,4 +30,4 @@ export class Quiz {
   @UpdateDateColumn()
   public updatedAt: Date;
 }
-export class Quiz {}
+
