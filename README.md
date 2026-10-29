@@ -1,206 +1,91 @@
 # Learning Management System (LMS)
 
-A comprehensive Learning Management System built with NestJS, featuring course management, lesson delivery, quiz assessments, and progress tracking.
+A NestJS REST API for course management, lesson delivery, quizzes and progress tracking, with Redis caching and RabbitMQ for background work.
 
 ## Features
 
-- **User Management**: Role-based authentication (Student, Teacher, Admin) with JWT tokens
-- **Course Management**: Create, enroll, and manage courses with role-based access control
-- **Lesson Delivery**: Organize and deliver course content through structured lessons
-- **Assessment System**: Create and manage quizzes with multiple-choice questions
-- **Progress Tracking**: Monitor student progress through lessons and quiz submissions
-- **Email Notifications**: Automated email verification and notifications using Handlebars templates
-- **Caching**: Redis-based caching for improved performance
-- **Message Queue**: RabbitMQ integration for asynchronous processing
-- **Security**: Helmet for security headers, rate limiting, and CORS configuration
-- **Database**: PostgreSQL with TypeORM for data persistence
-- **Docker Support**: Containerized deployment with Docker Compose
+- **Users and roles**: Student, Teacher and Admin with JWT authentication
+- **Courses**: create, enroll, unenroll, with role-based access control
+- **Lessons**: structured content per course
+- **Quizzes**: multiple-choice quizzes with submission
+- **Progress**: lesson completion and per-course progress
+- **Email**: verification and notifications via Handlebars templates
+- **Infrastructure**: Redis cache, RabbitMQ queue, Helmet, rate limiting, CORS
+- **Docker Compose** for PostgreSQL, Redis and RabbitMQ
 
-## Tech Stack
+## Tech stack
 
-- **Framework**: NestJS with TypeScript
-- **Database**: PostgreSQL with TypeORM
-- **Cache**: Redis
-- **Message Queue**: RabbitMQ
-- **Authentication**: JWT with Passport
-- **Validation**: class-validator and class-transformer
-- **Email**: Nodemailer with Handlebars templates
-- **Testing**: Jest
-- **Linting**: ESLint with Prettier
+NestJS, TypeScript, PostgreSQL, TypeORM, Redis, RabbitMQ, Passport/JWT, class-validator, Nodemailer + Handlebars, Jest, ESLint + Prettier.
 
-## Environment Setup
+## Getting started
 
-Create a `.env` file in the root directory with the following variables:
+Prerequisites: Node.js 18+, Docker.
+
+```bash
+git clone https://github.com/a-3isa/lms-1
+cd lms-1
+npm install
+docker-compose up -d     # PostgreSQL, Redis, RabbitMQ
+```
+
+Create `.env`:
 
 ```env
-# Database
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=your_db_user
 POSTGRES_PASSWORD=your_db_password
 POSTGRES_DB=lms_db
 
-# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# JWT
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=change-me
 
-# Email
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USER=your_email@gmail.com
 MAIL_PASS=your_app_password
 
-# RabbitMQ
 RABBITMQ_URL=amqp://localhost:5672
 
-# Application
 PORT=3000
 NODE_ENV=development
 ```
 
-## Docker Setup
-
-The application includes Docker support for easy deployment:
+Make sure the PostgreSQL values match those in `docker-compose.yml`.
 
 ```bash
-# Start all services (PostgreSQL, Redis, RabbitMQ)
-$ docker-compose up -d
-
-# View logs
-$ docker-compose logs -f
-
-# Stop services
-$ docker-compose down
+npm run start:dev                      # development
+npm run build && npm run start:prod    # production
 ```
 
-## Installation & Running
+## API overview
 
-```bash
-# Install dependencies
-$ npm install
+- **Auth**: `POST /auth/register`, `/auth/login`, `/auth/verify-email`, `/auth/forgot-password`
+- **Courses**: `GET|POST /courses`, `GET|PATCH|DELETE /courses/:id`, `POST /courses/:id/enroll`, `/unenroll`
+- **Lessons**: `/courses/:courseId/lessons` and `/:id` (create/update/delete: course owner only)
+- **Quizzes**: `/courses/:courseId/quizzes`, `/:id`, `POST /:id/submit`
+- **Progress**: `POST|DELETE /progress/lessons/:lessonId/complete`, `GET /progress/courses/:courseId`
+- **Profile**: `GET|PATCH /user/profile`
 
-# Run in development mode (with hot reload)
-$ npm run start:dev
+## Structure
 
-# Run in production mode
-$ npm run start:prod
-
-# Build the application
-$ npm run build
+```
+src/
+  auth/  courses/  lessons/  quizzes/  progress/  user/   feature modules
+  rabbitmq/                                              queue module
+  config/                                                configuration
 ```
 
 ## Testing
 
 ```bash
-# Run unit tests
-$ npm run test
-
-# Run e2e tests
-$ npm run test:e2e
-
-# Run tests with coverage
-$ npm run test:cov
-
-# Run tests in watch mode
-$ npm run test:watch
+npm run test
+npm run test:e2e
+npm run test:cov
 ```
 
-## API Endpoints
+## License
 
-The LMS API provides the following main endpoints:
-
-### Authentication
-
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-- `POST /auth/verify-email` - Email verification
-- `POST /auth/forgot-password` - Password reset request
-
-### Courses
-
-- `GET /courses` - Get all courses (paginated)
-- `POST /courses` - Create course (Teachers/Admins only)
-- `GET /courses/:id` - Get course details
-- `PATCH /courses/:id` - Update course
-- `DELETE /courses/:id` - Delete course
-- `POST /courses/:id/enroll` - Enroll in course
-- `POST /courses/:id/unenroll` - Unenroll from course
-
-### Lessons
-
-- `GET /courses/:courseId/lessons` - Get course lessons
-- `POST /courses/:courseId/lessons` - Create lesson (Course owner only)
-- `GET /courses/:courseId/lessons/:id` - Get lesson details
-- `PATCH /courses/:courseId/lessons/:id` - Update lesson
-- `DELETE /courses/:courseId/lessons/:id` - Delete lesson
-
-### Quizzes
-
-- `GET /courses/:courseId/quizzes` - Get course quizzes
-- `POST /courses/:courseId/quizzes` - Create quiz (Course owner only)
-- `GET /courses/:courseId/quizzes/:id` - Get quiz details
-- `PATCH /courses/:courseId/quizzes/:id` - Update quiz
-- `DELETE /courses/:courseId/quizzes/:id` - Delete quiz
-- `POST /courses/:courseId/quizzes/:id/submit` - Submit quiz answers
-
-### Progress
-
-- `POST /progress/lessons/:lessonId/complete` - Mark lesson complete
-- `DELETE /progress/lessons/:lessonId/complete` - Mark lesson incomplete
-- `GET /progress/courses/:courseId` - Get course progress
-
-### User Management
-
-- `GET /user/profile` - Get user profile
-- `PATCH /user/profile` - Update user profile
-
-## Project Structure
-
-```
-src/
-├── app.module.ts                 # Main application module
-├── main.ts                       # Application entry point
-├── auth/                         # Authentication module
-│   ├── auth.controller.ts
-│   ├── auth.module.ts
-│   ├── auth.service.ts
-│   ├── dto/
-│   ├── entities/
-│   ├── guards/
-│   └── strategies/
-├── courses/                      # Course management module
-│   ├── courses.controller.ts
-│   ├── courses.module.ts
-│   ├── courses.service.ts
-│   ├── dto/
-│   └── entities/
-├── lessons/                      # Lesson management module
-│   ├── lessons.controller.ts
-│   ├── lessons.module.ts
-│   ├── lessons.service.ts
-│   ├── dto/
-│   └── entities/
-├── quizzes/                      # Quiz management module
-│   ├── quizzes.controller.ts
-│   ├── quizzes.module.ts
-│   ├── quizzes.service.ts
-│   ├── dto/
-│   └── entities/
-├── progress/                     # Progress tracking module
-│   ├── progress.controller.ts
-│   ├── progress.module.ts
-│   ├── progress.service.ts
-│   ├── dto/
-│   └── entities/
-├── user/                         # User management module
-│   ├── user.controller.ts
-│   ├── user.module.ts
-│   ├── user.service.ts
-│   ├── dto/
-│   └── entities/
-├── rabbitmq/                     # Message queue module
-└── config/                       # Configuration files
-```
+UNLICENSED.
