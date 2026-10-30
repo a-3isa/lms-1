@@ -1,4 +1,4 @@
-FROM postgres:15-alpine
+FROM postgres:18-alpine
 
 
 # Expose the default PostgreSQL port
