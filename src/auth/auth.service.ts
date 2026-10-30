@@ -28,6 +28,7 @@ export class AuthService {
     if (!role || role === UserRole.ADMIN) {
       throw new ConflictException('Invalid user role');
     }
+    await this.assertUsernameFree(username);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const salt: string = await genSalt();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
@@ -100,6 +101,7 @@ export class AuthService {
     createUserDto: UserRegisterDto,
   ): Promise<{ accessToken: string }> {
     const { username, email, password } = createUserDto;
+    await this.assertUsernameFree(username);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const salt: string = await genSalt();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
@@ -120,7 +122,18 @@ export class AuthService {
       const accessToken: string = this.jwtService.sign(payload);
       return { accessToken };
     } catch (error) {
-      throw new InternalServerErrorException(error);
+      if ((error as Record<string, unknown>).code === '23505') {
+        throw new ConflictException('User exists');
+      }
+      throw new InternalServerErrorException();
+    }
+  }
+
+  // Login and tokens identify users by username, which has no unique index,
+  // so a duplicate would resolve to whichever account comes first.
+  private async assertUsernameFree(username: string): Promise<void> {
+    if (await this.userRepository.existsBy({ username })) {
+      throw new ConflictException('User exists');
     }
   }
 }
