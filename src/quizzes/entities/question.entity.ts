@@ -26,8 +26,6 @@ export class Question {
   })
   options: Option[];
 
-
-
   @ManyToOne(() => Quiz, (quiz) => quiz.questions, { onDelete: 'CASCADE' })
   public quiz: Quiz;
 }
