@@ -18,7 +18,7 @@ export class ProgressService {
     private readonly lessonRepo: Repository<Lesson>,
     @InjectRepository(Quiz)
     private readonly quizRepo: Repository<Quiz>,
-  ) { }
+  ) {}
 
   public async markLessonComplete(user: User, lessonId: string) {
     const lesson = await this.lessonRepo.findOne({

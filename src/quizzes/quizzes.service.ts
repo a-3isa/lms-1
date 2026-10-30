@@ -41,7 +41,7 @@ export class QuizzesService {
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
     private readonly progressService?: ProgressService,
-  ) { }
+  ) {}
 
   public async create(
     courseId: string,
@@ -112,8 +112,7 @@ export class QuizzesService {
 
   private sanitizeQuizForUser(quiz: Quiz, user?: User): Quiz | SanitizedQuiz {
     const isOwnerOrAdmin =
-      user?.role === UserRole.ADMIN ||
-      quiz.course?.teacher?.id === user?.id;
+      user?.role === UserRole.ADMIN || quiz.course?.teacher?.id === user?.id;
 
     if (isOwnerOrAdmin) return quiz;
 
@@ -134,7 +133,6 @@ export class QuizzesService {
     };
   }
 
-
   public async update(
     courseId: string,
     id: string,
@@ -149,10 +147,7 @@ export class QuizzesService {
     if (!quiz || quiz.course.id !== courseId)
       throw new NotFoundException('Quiz not found in course');
 
-    if (
-      user.role !== UserRole.ADMIN &&
-      quiz.course.teacher?.id !== user.id
-    )
+    if (user.role !== UserRole.ADMIN && quiz.course.teacher?.id !== user.id)
       throw new ForbiddenException('Not allowed');
 
     Object.assign(quiz, { title: dto.title ?? quiz.title });
@@ -178,7 +173,6 @@ export class QuizzesService {
 
     return this.findOne(courseId, id, user);
   }
-
 
   public async remove(
     courseId: string,
@@ -249,11 +243,11 @@ export class QuizzesService {
           percent,
           answers,
         );
-      } catch { }
+      } catch {
+        // Recording progress must not fail the submission.
+      }
     }
 
     return { totalPoints, scoredPoints, percent };
   }
-
-
 }
