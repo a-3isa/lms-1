@@ -1,5 +1,8 @@
 # LMS API
 
+[![CI](https://github.com/a-3isa/lms-1/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/a-3isa/lms-1/actions/workflows/ci.yml)
+![TypeScript](https://img.shields.io/badge/language-TypeScript-3178c6.svg)
+
 A NestJS REST API for a learning management system: students, teachers and admins; courses with lessons and quizzes; automatic quiz grading; per-course progress; and email verification sent through a RabbitMQ queue.
 
 ## Overview
