@@ -17,6 +17,7 @@ import { UpdateCourseDto } from './dto/update-course.dto';
 import { GetUser } from 'src/auth/get-user.decorator';
 import { User } from 'src/user/entities/user.entity';
 import { RoleGuard } from 'src/auth/roles.guard';
+import { CourseOwnerGuard } from '../lessons/course-owner.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserRole } from 'src/user/entities/user.entity';
 
@@ -45,11 +46,13 @@ export class CoursesController {
   }
 
   @Patch(':id')
+  @UseGuards(CourseOwnerGuard)
   update(@Param('id') id: string, @Body() updateCourseDto: UpdateCourseDto) {
     return this.coursesService.update(id, updateCourseDto);
   }
 
   @Delete(':id')
+  @UseGuards(CourseOwnerGuard)
   remove(@Param('id') id: string) {
     return this.coursesService.remove(id);
   }

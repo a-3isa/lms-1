@@ -23,7 +23,8 @@ export class CourseOwnerGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: User; params?: Record<string, string> }>();
     const user = req.user;
-    const courseId = req.params?.courseId;
+    // Lesson and quiz routes name it :courseId; course routes name it :id.
+    const courseId = req.params?.courseId ?? req.params?.id;
 
     if (!courseId) {
       throw new NotFoundException('Course id param missing');
