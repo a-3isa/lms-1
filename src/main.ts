@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 
 async function bootstrap() {
@@ -12,6 +12,8 @@ async function bootstrap() {
       transform: true, // auto-transforms payloads to DTO instances
     }),
   );
+  // Applies @Exclude() on entities, so password hashes never leave the API.
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.use(helmet());
   app.enableCors({
     origin: ['http://localhost:3000'],
