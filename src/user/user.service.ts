@@ -31,6 +31,14 @@ export class UserService {
   }
 
   public async update(user: User, updateUserDto: UpdateUserDto): Promise<User> {
+    // Usernames identify accounts at login and in tokens, so they must stay unique.
+    if (
+      updateUserDto.username !== undefined &&
+      updateUserDto.username !== user.username &&
+      (await this.userRepository.existsBy({ username: updateUserDto.username }))
+    ) {
+      throw new ConflictException('Username is taken');
+    }
     if (updateUserDto.password) {
       if (!updateUserDto.oldPassword) {
         throw new BadRequestException(

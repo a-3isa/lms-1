@@ -25,6 +25,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
   public async validate(payload: JwtPayload): Promise<User> {
     const { username } = payload;
+    // Tokens without a username (such as email-verification tokens) must not
+    // authenticate: TypeORM drops an undefined condition and would return the
+    // first user in the table.
+    if (typeof username !== 'string' || username === '') {
+      throw new UnauthorizedException();
+    }
     const user: User | null = await this.userRepository.findOne({
       where: { username },
     });

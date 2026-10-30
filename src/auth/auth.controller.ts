@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { RoleGuard } from './roles.guard';
 import { UserRegisterDto } from './dto/auth-credentials.dto';
 import { UserLoginDto } from 'src/user/dto/user-login.dto';
 
@@ -41,7 +42,8 @@ export class AuthController {
     return 'Account verified successfully';
   }
 
-  // @UseGuards(RoleGuard)
+  // RoleGuard with no @Roles() admits admins only.
+  @UseGuards(RoleGuard)
   @Post('/adminRegister')
   @ApiOperation({ summary: 'Register a new admin user' })
   @ApiResponse({ status: 201, description: 'Admin registered successfully' })

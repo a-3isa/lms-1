@@ -1,91 +1,148 @@
-# Learning Management System (LMS)
+# LMS API
 
-A NestJS REST API for course management, lesson delivery, quizzes and progress tracking, with Redis caching and RabbitMQ for background work.
+[![CI](https://github.com/a-3isa/lms-1/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/a-3isa/lms-1/actions/workflows/ci.yml)
+![TypeScript](https://img.shields.io/badge/language-TypeScript-3178c6.svg)
+
+A NestJS REST API for a learning management system: students, teachers and admins; courses with lessons and quizzes; automatic quiz grading; per-course progress; and email verification sent through a RabbitMQ queue.
+
+## Overview
+
+Teachers create courses and add lessons and multiple-choice quizzes to them. Students enrol, mark lessons complete and submit quizzes; the API grades each submission and records it. A course's progress view combines completed lessons and quiz results. New accounts get a verification email, and only verified accounts can log in.
 
 ## Features
 
-- **Users and roles**: Student, Teacher and Admin with JWT authentication
-- **Courses**: create, enroll, unenroll, with role-based access control
-- **Lessons**: structured content per course
-- **Quizzes**: multiple-choice quizzes with submission
-- **Progress**: lesson completion and per-course progress
-- **Email**: verification and notifications via Handlebars templates
-- **Infrastructure**: Redis cache, RabbitMQ queue, Helmet, rate limiting, CORS
-- **Docker Compose** for PostgreSQL, Redis and RabbitMQ
+- **Accounts:** registration with email verification, login with bcrypt-hashed passwords and 7-day JWTs, and three roles: student, teacher and admin. Every route except register, login and verify needs a token.
+- **Courses:** paginated listing; teachers and admins create courses; only the course's teacher or an admin can change or delete it; students enrol and unenrol.
+- **Lessons and quizzes:** nested under a course and managed by its teacher. Quizzes have questions with options; students never see which option is correct.
+- **Grading and progress:** `POST /courses/:courseId/quizzes/:id/submit` scores the answers and records the submission; students mark lessons complete; `GET /progress/courses/:courseId` reports both.
+- **Email:** registration publishes a message to a RabbitMQ topic exchange; a subscriber renders a Handlebars template and sends it over SMTP.
+- **Protection:** Helmet headers, a CORS allow-list, a global rate limit of 100 requests a minute, validation that rejects unknown fields, and password hashes stripped from every response.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    client[Client] -->|JWT| api
+    subgraph api[NestJS API]
+        direction TB
+        guards[Rate limit, JWT guard,<br/>role and course-owner guards] --> modules[Auth, users, courses,<br/>lessons, quizzes, progress]
+    end
+    api -->|TypeORM| pg[(PostgreSQL)]
+    api -->|publish| mq[[RabbitMQ<br/>email_exchange]]
+    mq -->|email_queue| mailer[Email subscriber] -->|SMTP| smtp[Mail server]
+```
 
 ## Tech stack
 
-NestJS, TypeScript, PostgreSQL, TypeORM, Redis, RabbitMQ, Passport/JWT, class-validator, Nodemailer + Handlebars, Jest, ESLint + Prettier.
+NestJS 11, TypeScript, PostgreSQL with TypeORM, Passport JWT, bcrypt, class-validator, `@nestjs/throttler`, Helmet, RabbitMQ (`@golevelup/nestjs-rabbitmq`), Nodemailer with Handlebars templates (`@nestjs-modules/mailer`), cache-manager, Jest, ESLint and Prettier.
 
 ## Getting started
 
-Prerequisites: Node.js 18+, Docker.
+You need Node.js 20 or later (`.nvmrc` pins 22), PostgreSQL and RabbitMQ, plus an SMTP account to send verification emails.
 
 ```bash
 git clone https://github.com/a-3isa/lms-1
 cd lms-1
-npm install
-docker-compose up -d     # PostgreSQL, Redis, RabbitMQ
+npm ci
+cp .env.example .env                  # then fill in the values
 ```
 
-Create `.env`:
+The app reads `.env`, or `.env.production` when `NODE_ENV=production`.
 
-```env
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=your_db_user
-POSTGRES_PASSWORD=your_db_password
-POSTGRES_DB=lms_db
+| Variable | Required | Purpose |
+|---|---|---|
+| `PORT` | no (3000) | HTTP port |
+| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | yes | PostgreSQL connection. TypeORM creates and updates the tables on start (`synchronize: true`). |
+| `JWT_SECRET` | yes | Signs login and verification tokens; the app will not start without it |
+| `RABBITMQ_URL` | yes | e.g. `amqp://guest:guest@localhost:5672` |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS` | for emails | SMTP server for verification emails |
+| `REDIS_HOST`, `REDIS_PORT` | no | Intended cache store; currently ignored (see known issues) |
 
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-JWT_SECRET=change-me
-
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USER=your_email@gmail.com
-MAIL_PASS=your_app_password
-
-RABBITMQ_URL=amqp://localhost:5672
-
-PORT=3000
-NODE_ENV=development
-```
-
-Make sure the PostgreSQL values match those in `docker-compose.yml`.
+`docker-compose.yml` starts PostgreSQL 15, RabbitMQ (management UI on 15672) and Redis, reading `POSTGRES_*` from `.env`. Then run the API on the host:
 
 ```bash
-npm run start:dev                      # development
-npm run build && npm run start:prod    # production
+docker compose up -d
+npm run start:dev                     # watch mode, http://localhost:3000
 ```
 
-## API overview
+For a production build: `npm run build`, then `npm run start:prod`.
 
-- **Auth**: `POST /auth/register`, `/auth/login`, `/auth/verify-email`, `/auth/forgot-password`
-- **Courses**: `GET|POST /courses`, `GET|PATCH|DELETE /courses/:id`, `POST /courses/:id/enroll`, `/unenroll`
-- **Lessons**: `/courses/:courseId/lessons` and `/:id` (create/update/delete: course owner only)
-- **Quizzes**: `/courses/:courseId/quizzes`, `/:id`, `POST /:id/submit`
-- **Progress**: `POST|DELETE /progress/lessons/:lessonId/complete`, `GET /progress/courses/:courseId`
-- **Profile**: `GET|PATCH /user/profile`
+**Roles.** Registration always creates a student. Promote teachers and the first admin in the database; after that, admins can create admins with `POST /auth/adminRegister`.
 
-## Structure
+```sql
+UPDATE users SET role = 'admin', verified = true WHERE email = 'you@example.com';
+```
+
+## Docker
+
+The `Dockerfile` builds the API image (`docker build -t lms .`). The `app` service in `docker-compose.yml` is commented out, so compose runs only the backing services.
+
+## API
+
+All routes except register, login and verify need `Authorization: Bearer <token>`.
+
+| Area | Route | Who |
+|---|---|---|
+| Auth | `POST /auth/register`, `POST /auth/login` | Anyone |
+| | `GET /auth/verify?token=` (link in the verification email) | See known issues |
+| | `POST /auth/adminRegister` | Admin |
+| Users | `GET /user/me`, `PATCH /user` (own profile and password) | Signed in |
+| | `GET /user`, `GET /user/:id`, `DELETE /user/:id` | Admin |
+| Courses | `GET /courses?page=&limit=`, `GET /courses/:id`, `POST /courses/:id/enroll`, `POST /courses/:id/unenroll` | Signed in |
+| | `POST /courses` | Teacher, admin |
+| | `PATCH /courses/:id`, `DELETE /courses/:id` | Course teacher, admin |
+| Lessons | `GET /courses/:courseId/lessons[/:id]` | Signed in |
+| | `POST`, `PATCH`, `DELETE /courses/:courseId/lessons[/:id]` | Course teacher, admin |
+| Quizzes | `GET /courses/:courseId/quizzes[/:id]`, `POST /courses/:courseId/quizzes/:id/submit` | Signed in |
+| | `POST`, `PATCH`, `DELETE /courses/:courseId/quizzes[/:id]` | Course teacher, admin |
+| Progress | `POST`, `DELETE /progress/lessons/:lessonId/complete`, `GET /progress/courses/:courseId` | Signed in |
+
+## Project structure
 
 ```
 src/
-  auth/  courses/  lessons/  quizzes/  progress/  user/   feature modules
-  rabbitmq/                                              queue module
-  config/                                                configuration
+  auth/        register, login, verification, JWT strategy and guard, role guard
+  user/        profile and admin user management
+  courses/     courses and enrolment
+  lessons/     lessons and the course-owner guard
+  quizzes/     quizzes, questions, options, grading
+  progress/    lesson completion and quiz submissions
+  rabbitmq/    queue publisher
+templates/     Handlebars email templates
+docker/        images for the compose services
 ```
 
-## Testing
+## Testing and checks
 
 ```bash
-npm run test
-npm run test:e2e
-npm run test:cov
+npm test               # unit tests (Jest)
+npm run lint           # ESLint, no fixes applied
+npm run format:check   # Prettier
+npm run build
 ```
 
-## License
+The unit tests cover token validation, email verification, duplicate usernames, the role guard and the course-owner guard. `test/app.e2e-spec.ts` is still the NestJS starter test (it expects `GET /` to return "Hello World!", a route this app does not have), so `npm run test:e2e` does not pass. CI runs lint, format check, build and unit tests, and builds the Docker image, on every pull request and on pushes to `master`.
 
-UNLICENSED.
+## Security notes
+
+- Passwords are hashed with bcrypt and never returned. Login gives the same answer for an unknown user, a wrong password and an unverified account.
+- Only tokens that name a user authenticate; verification tokens cannot be used as login tokens. Usernames are kept unique because they identify accounts.
+- Course, lesson and quiz changes need the course's teacher or an admin; creating admins needs an admin.
+- Request bodies are validated with whitelisting and unknown fields are rejected.
+- Login and every other route share a rate limit of 100 requests a minute per client.
+- Secrets come from the environment; `.env*` files other than `.env.example` are git-ignored. See [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+## Known issues and roadmap
+
+These are bugs in the current code, recorded here rather than hidden:
+
+- **Email verification does not complete.** The verification link is a `GET`, but the JWT guard only lets `POST /auth/verify` through without a token. Also, the global rate-limit guard runs on the RabbitMQ consumer and throws, so the verification email is never sent. Until both are fixed, verify accounts in the database (see Roles above).
+- **`GET /user/me` returns 500**: it loads a `cart` relation that this app does not have.
+- **Course listings include every enrolled student's username and email**, visible to any signed-in user.
+- **The cache is in memory, not in Redis**: `cache-manager-redis-store` is not compatible with cache-manager 7, so the Redis settings are ignored.
+- The Swagger decorators are in place, but no Swagger UI is mounted.
+- Planned: migrations instead of `synchronize`, real end-to-end tests, and upgrades to nodemailer 10 and bcrypt 6.
+
+## License and author
+
+UNLICENSED: the source is public for portfolio review, and no licence is granted to reuse it. Built by Ahmed Ibrahim Hussien ([a-3isa](https://github.com/a-3isa)).
