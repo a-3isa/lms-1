@@ -28,7 +28,7 @@ import { ProgressModule } from './progress/progress.module';
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          ttl: 60,
+          ttl: 60_000, // milliseconds: 100 requests a minute
           limit: 100,
         },
       ],
