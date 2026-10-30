@@ -78,8 +78,14 @@ export class AuthService {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const payload = this.jwtService.verify(token);
+      const email = (payload as Record<string, unknown>).email;
+      // Only verification tokens carry an email; any other token would match
+      // the first user in the table.
+      if (typeof email !== 'string' || email === '') {
+        throw new Error('Not a verification token');
+      }
       const user = await this.userRepository.findOne({
-        where: { email: (payload as Record<string, unknown>).email as string },
+        where: { email },
       });
       if (user) {
         user.verified = true;
