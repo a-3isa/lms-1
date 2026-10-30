@@ -12,7 +12,7 @@ import { Question } from './entities/question.entity';
 import { Option } from './entities/option.entity';
 import { Course } from '../courses/entities/course.entity';
 import { User, UserRole } from 'src/user/entities/user.entity';
-import type { ProgressService } from '../progress/progress.service';
+import { ProgressService } from '../progress/progress.service';
 
 type SanitizedQuestion = {
   id: string;
