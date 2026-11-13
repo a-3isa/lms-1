@@ -1,4 +1,4 @@
-FROM rabbitmq:3-management-alpine
+FROM rabbitmq:4-management-alpine
 
 # Enable management plugin (for web UI at port 15672)
 RUN rabbitmq-plugins enable rabbitmq_management
